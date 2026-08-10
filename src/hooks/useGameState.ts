@@ -24,7 +24,7 @@ import { heartsMultiplier, isLoveNumber, isQixi } from '../utils/events';
 import { playSound } from '../utils/sound';
 
 const STORAGE_KEY = 'couples-ludo-game-state';
-export const CURRENT_CONTENT_VERSION = 2;
+export const CURRENT_CONTENT_VERSION = 3; // v3：默认主题卡池按"由轻到重"重排（滑动窗口依赖数组顺序）
 const MINI_POOL_KEY = '__mini__';
 const TRUTH_POOL_KEY = '__truth__';
 
@@ -69,18 +69,6 @@ function cleanTasks(input: unknown): string[] {
   const out: string[] = [];
   for (const x of input) {
     const v = typeof x === 'string' ? x.trim() : '';
-    if (!v || seen.has(v)) continue;
-    seen.add(v);
-    out.push(v);
-  }
-  return out;
-}
-
-function mergeUnique(saved: string[], defaults: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const t of [...saved, ...defaults]) {
-    const v = t.trim();
     if (!v || seen.has(v)) continue;
     seen.add(v);
     out.push(v);
@@ -140,7 +128,8 @@ function normalizeThemes(input: unknown, savedVersion: number): Theme[] {
 
   if (normalized.length === 0) return DEFAULT_THEMES.map(cloneTheme);
 
-  // 内容版本升级：仅执行一次合并。默认主题按 id 补入缺失任务（去重），自建主题不动
+  // 内容版本升级：仅执行一次合并。默认主题按 id 重排为"由轻到重"的权威顺序
+  // （滑动窗口抽卡依赖数组顺序），用户追加进默认主题的自定义卡排在末尾；自建主题不动
   if (savedVersion < CURRENT_CONTENT_VERSION) {
     const result = [...normalized];
     for (const def of DEFAULT_THEMES) {
@@ -148,10 +137,13 @@ function normalizeThemes(input: unknown, savedVersion: number): Theme[] {
       if (idx === -1) {
         result.push(cloneTheme(def));
       } else {
+        const saved = result[idx];
+        const userAddedTasks = saved.tasks.filter(t => !def.tasks.includes(t));
+        const userAddedDuo = saved.duoTasks.filter(t => !def.duoTasks.includes(t));
         result[idx] = {
-          ...result[idx],
-          tasks: mergeUnique(result[idx].tasks, def.tasks),
-          duoTasks: mergeUnique(result[idx].duoTasks, def.duoTasks),
+          ...saved,
+          tasks: [...def.tasks, ...userAddedTasks],
+          duoTasks: [...def.duoTasks, ...userAddedDuo],
         };
       }
     }
@@ -874,7 +866,7 @@ export function useGameState() {
       ): TaskEventData => {
         const pool = field === 'duo' ? poolForBandDuo(band, state.themes) : poolForBandTasks(band, state.themes);
         const key = `band_${band}:${field}`;
-        const task = drawFromPool(key, pool, bandProg);
+        const task = drawFromPool(key, pool, bandProg) || '和对方深情对视 30 秒'; // 空池兜底
         return buildTask(type, executorId, undefined, task, title, icon, color, rejectable, key, `任务来自「${BAND_NAMES[band]}」`);
       };
 
