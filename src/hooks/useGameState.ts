@@ -329,9 +329,12 @@ function drawIndex(
     if (!valid.includes(i)) inWindow.push(i);
   }
   if (inWindow.length === 0) {
-    // 当前窗口抽干：只清掉本窗口的抽取记录，窗口内重新抽
+    // 当前窗口抽干：只清掉本窗口的抽取记录，窗口内重新抽；
+    // 顺手排除上一次抽的索引，避免重置后立刻抽回同一张
     const remaining = valid.filter(i => i < start || i >= start + winSize);
-    const index = start + Math.floor(Math.random() * winSize);
+    const last = valid[valid.length - 1];
+    let index = start + Math.floor(Math.random() * winSize);
+    if (winSize > 1 && index === last) index = start + ((index - start + 1) % winSize);
     return { index, nextDrawn: [...remaining, index] };
   }
   const index = inWindow[Math.floor(Math.random() * inWindow.length)];
@@ -1248,10 +1251,17 @@ export function useGameState() {
         if (debt) {
           text = debt.task;
           princessDebtId = debt.id;
-        } else {
+        } else if (state.mode === 'heat') {
+          // 渐进之夜：按当前温度带的带内进度抽（刚进带不会抽到最重口的）
           const pool = poolForBandTasks(band, state.themes);
           poolKey = `band_${band}:tasks`;
-          text = drawFromPool(poolKey, pool);
+          text = drawFromPool(poolKey, pool, clamp01((state.heat - BAND_FLOORS[band]) / 20));
+        } else {
+          // 非温度模式：从男方所选主题池抽，深度跟随男方赛程
+          const mTheme = state.themes.find(t => t.id === male.themeId);
+          const pool = mTheme?.tasks ?? [];
+          poolKey = `${male.themeId || ''}:tasks`;
+          text = drawFromPool(poolKey, pool, clamp01(male.step / WIN_STEP));
         }
         if (!text) return false;
         princessTask = {
