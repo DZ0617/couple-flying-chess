@@ -42,8 +42,9 @@ export function AiImportModal({ isOpen, themeName, initialField, onClose, onImpo
 2. **行动导向**：指令必须是具体的行动，避免抽象概念。 
 3. **字数限制**：每条指令必须是中文，长度严格控制在 6 ~ 22 字之间，不能过长。 
 4. **语气风格**：轻松、撩人、幽默或温馨，适合情侣互动。 
-5. ${duoHint}
-6. **禁忌**：禁止出现编号、Emoji 表情、Markdown 格式、解释性文字。 
+5. **排序要求**：20 条任务必须按尺度由轻到重排列，第 1 条最温和，第 20 条最大胆。 
+6. ${duoHint}
+7. **禁忌**：禁止出现编号、Emoji 表情、Markdown 格式、解释性文字。 
  
  # Output Format 
 你必须且只能输出纯 JSON 字符串，不要包含 "\`\`\`json" 或 "\`\`\`" 包裹。 
