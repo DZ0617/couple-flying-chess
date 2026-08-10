@@ -87,6 +87,11 @@ function App() {
   // 任务卡改由存档驱动（B3：防刷新逃避）
   const taskData = state.pendingTask;
 
+  // 有弹层盖住时禁用 GameView 的空格掷骰与掷骰按钮（防穿透）
+  const modalOpen =
+    state.pendingGate !== null || !!state.pendingTask || !!state.pendingSync ||
+    isShopOpen || isLeaveOpen || isRulesOpen || isDebtOpen;
+
   // 统一胜利监听：任何来源的位移到达终点都判胜（B2）
   // 结算幂等由 settleMatch 的 ended 标记保证：刷新胜利页不会重复入账
   useEffect(() => {
@@ -409,6 +414,7 @@ function App() {
           pendingLanding={state.pendingLanding}
           heat={state.heat}
           heatCeiling={state.heatCeiling}
+          modalOpen={modalOpen}
           onMove={movePlayer}
           onResolveLanding={resolveLanding}
           onApplyMovement={applyMovement}
