@@ -282,6 +282,7 @@ function normalizeGameState(saved: unknown): GameState | null {
     // 渐进之夜
     heat: typeof s.heat === 'number' ? clampHeat(s.heat) : 0,
     heatCeiling: typeof s.heatCeiling === 'number' ? Math.min(4, Math.max(0, Math.floor(s.heatCeiling))) : 4,
+    heatRound: typeof s.heatRound === 'number' && s.heatRound >= 1 ? Math.floor(s.heatRound) : 1,
     pendingGate: typeof s.pendingGate === 'number' && s.pendingGate >= 1 && s.pendingGate <= 4 ? s.pendingGate : null,
     maxBand: typeof s.maxBand === 'number' ? Math.min(4, Math.max(0, Math.floor(s.maxBand))) : 0,
     debtList,
@@ -348,6 +349,7 @@ export function useGameState() {
       contentVersion: CURRENT_CONTENT_VERSION,
       heat: 0,
       heatCeiling: 4,
+      heatRound: 1,
       pendingGate: null,
       maxBand: 0,
       debtList: [],
@@ -532,6 +534,7 @@ export function useGameState() {
       riggedRoll: null,
       heat: 0,
       heatCeiling,
+      heatRound: 1,
       pendingGate: null,
       maxBand: 0,
       queenBuff: null,
@@ -569,6 +572,7 @@ export function useGameState() {
       frozenPlayerId: null,
       riggedRoll: null,
       heat: 0,
+      heatRound: 1,
       pendingGate: null,
       maxBand: 0,
       queenBuff: null,
@@ -576,6 +580,38 @@ export function useGameState() {
         ? { id: Date.now(), text: '🎋 七夕特别场：全场 Hearts 双倍！' }
         : null,
     }));
+  }, []);
+
+  // 渐进之夜续局：本局胜负已入账，温度/上限/欠账/抽卡记录跨局保留，重开棋盘继续升温
+  const continueHeatNight = useCallback(() => {
+    setState(prev => {
+      const round = prev.heatRound + 1;
+      const band = effectiveBand(prev.heat, prev.heatCeiling);
+      return {
+        ...prev,
+        view: 'game',
+        turn: Math.random() < 0.5 ? 0 : 1,
+        players: prev.players.map(p => ({ ...p, step: 0, shield: false, hearts: 0 })),
+        boardMap: generateBoardMap(MODE_CONFIGS[prev.mode].plan),
+        match: freshMatch(),          // 新一局独立结算，战绩照常累积
+        drawnTaskMap: prev.drawnTaskMap, // 今晚任务不重复
+        pendingTask: null,
+        pendingLanding: null,
+        pendingSync: null,
+        pendingGate: null,
+        milestones: { halfway: false, sprint: false },
+        shopUsage: {},
+        frozenPlayerId: null,
+        riggedRoll: null,
+        queenBuff: null,
+        heatRound: round,
+        // heat / heatCeiling / maxBand / debtList 原样保留
+        grantFeed: {
+          id: Date.now() + Math.random(),
+          text: `🌙 第 ${round} 局开始 · 当前 ${prev.heat}°「${BAND_NAMES[band]}」，目标「${BAND_NAMES[prev.heatCeiling]}」`,
+        },
+      };
+    });
   }, []);
 
   const movePlayer = useCallback((steps: number) => {
@@ -1537,6 +1573,7 @@ export function useGameState() {
     importThemeTasks,
     startGame,
     rematch,
+    continueHeatNight,
     movePlayer,
     applyMovement,
     endTurn,
