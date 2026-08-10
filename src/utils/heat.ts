@@ -21,6 +21,13 @@ export function clampHeat(h: number): number {
   return Math.min(100, Math.max(0, Math.round(h)));
 }
 
+export function clamp01(v: number): number {
+  return Math.min(1, Math.max(0, v));
+}
+
+// 各温度带的起始温度（滑动窗口抽卡的带内进度用）
+export const BAND_FLOORS = [0, 20, 40, 60, 80];
+
 // 温度 → 温度带（0~4）
 export function bandFromHeat(heat: number): number {
   if (heat >= 80) return 4;
