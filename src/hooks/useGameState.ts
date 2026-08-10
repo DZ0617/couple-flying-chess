@@ -524,6 +524,7 @@ export function useGameState() {
       }),
       boardMap: generateBoardMap(MODE_CONFIGS[mode].plan),
       match: freshMatch(),
+      isRolling: false,
       drawnTaskMap: {},
       pendingTask: null,
       pendingLanding: null,
@@ -563,6 +564,7 @@ export function useGameState() {
       }),
       boardMap: generateBoardMap(MODE_CONFIGS[prev.mode].plan),
       match: freshMatch(),
+      isRolling: false,
       drawnTaskMap: {},
       pendingTask: null,
       pendingLanding: null,
@@ -594,6 +596,7 @@ export function useGameState() {
         players: prev.players.map(p => ({ ...p, step: 0, shield: false, hearts: 0 })),
         boardMap: generateBoardMap(MODE_CONFIGS[prev.mode].plan),
         match: freshMatch(),          // 新一局独立结算，战绩照常累积
+        isRolling: false,
         drawnTaskMap: prev.drawnTaskMap, // 今晚任务不重复
         pendingTask: null,
         pendingLanding: null,
