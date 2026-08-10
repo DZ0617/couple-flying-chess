@@ -162,6 +162,9 @@ export function ThemeEditorModal({
 
         <div className="space-y-2">
           <div className="text-xs text-gray-400">新增{field === 'duoTasks' ? '双人任务' : '任务卡'}</div>
+          <p className="text-[10px] text-gray-600 -mt-1">
+            任务按列表顺序由轻到重出现——温和的放前面，深入的放后面
+          </p>
           <div className="flex gap-2">
             <input
               value={taskText}
