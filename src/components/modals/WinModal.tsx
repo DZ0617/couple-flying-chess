@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Player, MatchStats, Records, DebtItem, GameMode } from '../../types';
 import { Trophy, RotateCcw, Gift, Flame, Home, ReceiptText, Check, Coins } from 'lucide-react';
 import { DEBT_RANSOM } from '../../hooks/useGameState';
@@ -36,6 +36,14 @@ export function WinModal({
   const [act, setAct] = useState<'report' | 'punish'>('report');
   const [punishment, setPunishment] = useState<string | null>(null);
   const [extraPunishment, setExtraPunishment] = useState<string | null>(null);
+
+  // 弹层常驻挂载，跨局会残留 act/punishment：每次打开都从战报页开始
+  useEffect(() => {
+    if (!isOpen) return;
+    setAct('report');
+    setPunishment(null);
+    setExtraPunishment(null);
+  }, [isOpen]);
 
   if (!isOpen || !winner) return null;
 
