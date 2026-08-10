@@ -394,6 +394,10 @@ function App() {
 
       {state.view === 'game' && (
         <GameView
+          // key 用新局的 startedAt：startGame/rematch/continueHeatNight 都会生成新时间戳，
+          // 强制重挂载清空 phase/diceValues/rollCount 等本地回合状态（否则先手不变时骰子卡死）；
+          // 刷新时 startedAt 持久化不变，不会误伤 pendingLanding 恢复结算
+          key={state.match.startedAt}
           players={state.players}
           boardMap={state.boardMap}
           pathCoords={state.pathCoords}
