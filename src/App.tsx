@@ -36,6 +36,7 @@ function App() {
     importThemeTasks,
     startGame,
     rematch,
+    continueHeatNight,
     movePlayer,
     applyMovement,
     endTurn,
@@ -249,10 +250,18 @@ function App() {
         debtList={state.debtList}
         mode={state.mode}
         maxBand={state.maxBand}
+        heat={state.heat}
+        heatCeiling={state.heatCeiling}
+        heatRound={state.heatRound}
         onDrawPunishment={drawPunishment}
         onRemoveDebt={removeDebt}
         onPayDebt={payDebt}
         onConvertDebts={convertDebts}
+        onContinueNight={() => {
+          continueHeatNight();
+          setWinnerId(null);
+          setIsShopOpen(false);
+        }}
         onOpenWishShop={() => {
           resetGame();
           setWinnerId(null);
