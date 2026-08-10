@@ -6,12 +6,13 @@ export const BAND_NAMES = ['甜蜜带', '暧昧带', '烈火带', '诱惑带', '
 export const GATE_STEPS = [20, 40, 60, 80]; // 闸口位置
 
 // 温度增减（渐进之夜模式）
+// 数值已按"一晚 3~4 局烧到顶"调档；若想要更长的整夜节奏，恢复原值即可
 export const HEAT_GAIN = {
-  task: 1,      // 普通任务（含 lucky/trap/collision/mini）
-  duo: 3,       // 双人任务
+  task: 2,      // 普通任务（含 lucky/trap/collision/mini）
+  duo: 5,       // 双人任务
   truth: 2,     // 真心话
-  syncMatch: 4, // 默契考验答案一致
-  syncMiss: 2,  // 默契考验不一致（小惩罚，气氛照涨）
+  syncMatch: 6, // 默契考验答案一致
+  syncMiss: 3,  // 默契考验不一致（小惩罚，气氛照涨）
   reject: -3,   // 拒绝任务
   gateDecline: -8, // 闸口选择「不要」
 };
