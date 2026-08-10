@@ -31,6 +31,7 @@ interface GameViewProps {
   pendingLanding: { landingStep: number; rollCount: number; dice: number[] } | null;
   heat: number;
   heatCeiling: number;
+  modalOpen: boolean; // 有弹层盖住时禁用空格掷骰与掷骰按钮
   onMove: (steps: number) => void;
   onResolveLanding: (landingStep: number) => LandingOutcome;
   onApplyMovement: (m: Movement) => void;
@@ -55,7 +56,7 @@ interface GameViewProps {
 
 export function GameView({
   players, boardMap, pathCoords, currentTurn, mode,
-  frozenPlayerId, riggedRoll, grantFeed, pendingLanding, heat, heatCeiling,
+  frozenPlayerId, riggedRoll, grantFeed, pendingLanding, heat, heatCeiling, modalOpen,
   onMove, onResolveLanding, onApplyMovement, onApplyOutcomeMeta, onGainShield,
   onGainHearts, onCheckMilestones, onConsumeFrozen, onConsumeRigged,
   onEndTurn, onSetRolling, onRecordRoll, onApplyBackfire, onSetPendingLanding,
@@ -165,17 +166,17 @@ export function GameView({
     setPhase('rolling');
   }, [phase, riggedRoll, currentTurn, config.diceCount, onSetRolling, onRecordRoll, onConsumeRigged, pushToast]);
 
-  // 桌面端键盘操作：空格掷骰
+  // 桌面端键盘操作：空格掷骰（有弹层盖住时禁用，防止穿透）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && phase === 'awaitRoll') {
+      if (e.code === 'Space' && phase === 'awaitRoll' && !modalOpen) {
         e.preventDefault();
         handleRoll();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, handleRoll]);
+  }, [phase, modalOpen, handleRoll]);
 
   const settleLanding = useCallback(
     (landingStep: number, currentRollCount: number, dice: number[]) => {
@@ -392,7 +393,7 @@ export function GameView({
           </div>
           <button
             onClick={handleRoll}
-            disabled={phase !== 'awaitRoll'}
+            disabled={phase !== 'awaitRoll' || modalOpen}
             className="px-10 py-3 md:w-full rounded-full bg-gradient-to-r from-[#FF375F] to-[#BF5AF2] font-semibold disabled:opacity-40 active:scale-95 transition"
           >
             {phase === 'awaitRoll'
