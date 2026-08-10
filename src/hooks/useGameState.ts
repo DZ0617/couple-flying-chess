@@ -17,8 +17,8 @@ import { SHOP_ITEMS, WISH_ITEMS, CONQUER_LEVEL_IDS } from '../data/shopItems';
 import { SYNC_SWEET, SYNC_SPICY } from '../data/syncQuestions';
 import { PUNISH_FUNNY, punishmentPool } from '../data/punishments';
 import {
-  BAND_NAMES, BAND_THEME_IDS, HEAT_GAIN,
-  clampHeat, effectiveBand, poolForBandTasks, poolForBandDuo,
+  BAND_NAMES, BAND_THEME_IDS, HEAT_GAIN, BAND_FLOORS,
+  clampHeat, clamp01, effectiveBand, poolForBandTasks, poolForBandDuo,
 } from '../utils/heat';
 import { heartsMultiplier, isLoveNumber, isQixi } from '../utils/events';
 import { playSound } from '../utils/sound';
@@ -309,14 +309,33 @@ function createThemeId(existingIds: Set<string>) {
   return id;
 }
 
-function drawIndex(poolSize: number, drawn: number[]): { index: number; nextDrawn: number[] } {
+// 滑动窗口抽卡：progress 0 → 池子前半（温和），1 → 池子后半（深入）
+// progress 不传则退化为整池均匀抽（旧行为，给 mini/默契/惩罚等调味池用）
+// 前提约定：卡池数组必须按"由轻到重"排序，机制只认数组顺序
+function drawIndex(
+  poolSize: number,
+  drawn: number[],
+  progress?: number
+): { index: number; nextDrawn: number[] } {
   const valid = drawn.filter(i => i >= 0 && i < poolSize);
-  const used = valid.length >= poolSize ? [] : valid; // 抽完重置
-  const available: number[] = [];
-  for (let i = 0; i < poolSize; i++) if (!used.includes(i)) available.push(i);
-  if (available.length === 0) return { index: -1, nextDrawn: used };
-  const index = available[Math.floor(Math.random() * available.length)];
-  return { index, nextDrawn: [...used, index] };
+  const winSize =
+    progress === undefined ? poolSize : Math.min(poolSize, Math.max(4, Math.ceil(poolSize / 2)));
+  const maxStart = Math.max(0, poolSize - winSize);
+  const start =
+    progress === undefined ? 0 : Math.min(maxStart, Math.round(clamp01(progress) * maxStart));
+
+  const inWindow: number[] = [];
+  for (let i = start; i < start + winSize; i++) {
+    if (!valid.includes(i)) inWindow.push(i);
+  }
+  if (inWindow.length === 0) {
+    // 当前窗口抽干：只清掉本窗口的抽取记录，窗口内重新抽
+    const remaining = valid.filter(i => i < start || i >= start + winSize);
+    const index = start + Math.floor(Math.random() * winSize);
+    return { index, nextDrawn: [...remaining, index] };
+  }
+  const index = inWindow[Math.floor(Math.random() * inWindow.length)];
+  return { index, nextDrawn: [...valid, index] };
 }
 
 export function useGameState() {
@@ -735,10 +754,10 @@ export function useGameState() {
 
   // ---- 抽卡 ----
   const drawFromPool = useCallback(
-    (key: string, pool: string[]): string => {
+    (key: string, pool: string[], progress?: number): string => {
       if (pool.length === 0) return '';
       const prevDrawn = state.drawnTaskMap[key] ?? [];
-      const { index, nextDrawn } = drawIndex(pool.length, prevDrawn);
+      const { index, nextDrawn } = drawIndex(pool.length, prevDrawn, progress);
       const text = index >= 0 ? pool[index] : '';
       setState(prev => ({ ...prev, drawnTaskMap: { ...prev.drawnTaskMap, [key]: nextDrawn } }));
       return text;
@@ -808,6 +827,10 @@ export function useGameState() {
       const useTruth = MODE_CONFIGS[state.mode].useTruthDare;
       const isHeat = state.mode === 'heat';
       const band = effectiveBand(state.heat, state.heatCeiling);
+      // 赛程进度（非温度模式）：棋子越靠近终点，抽到的卡越深
+      const raceProg = clamp01(activePlayer.step / WIN_STEP);
+      // 带内温度进度（渐进之夜）：刚进带抽最温和的，带内越玩越深
+      const bandProg = clamp01((state.heat - BAND_FLOORS[band]) / 20);
 
       if (landingStep >= WIN_STEP) return { movements, final: { kind: 'win' } };
 
@@ -848,7 +871,7 @@ export function useGameState() {
       ): TaskEventData => {
         const pool = field === 'duo' ? poolForBandDuo(band, state.themes) : poolForBandTasks(band, state.themes);
         const key = `band_${band}:${field}`;
-        const task = drawFromPool(key, pool);
+        const task = drawFromPool(key, pool, bandProg);
         return buildTask(type, executorId, undefined, task, title, icon, color, rejectable, key, `任务来自「${BAND_NAMES[band]}」`);
       };
 
@@ -864,7 +887,7 @@ export function useGameState() {
             return { kind: 'task', data: heatTask('collision', opponent.id, 'tasks', '亲密追尾', 'handshake', 'text-yellow-400') };
           }
           const theme = state.themes.find(t => t.id === activePlayer.themeId);
-          const task = drawFromPool(`${activePlayer.themeId || ''}:tasks`, theme?.tasks ?? []);
+          const task = drawFromPool(`${activePlayer.themeId || ''}:tasks`, theme?.tasks ?? [], raceProg);
           return {
             kind: 'task',
             data: buildTask('collision', opponent.id, theme, task, '亲密追尾', 'handshake', 'text-yellow-400', true, `${activePlayer.themeId || ''}:tasks`),
@@ -892,7 +915,7 @@ export function useGameState() {
             return { kind: 'task', data: heatTask('lucky', opponent.id, 'tasks', '幸运时刻', 'favorite', 'text-[#FF375F]') };
           }
           const theme = state.themes.find(t => t.id === activePlayer.themeId);
-          const task = drawFromPool(`${theme?.id || ''}:tasks`, theme?.tasks ?? []);
+          const task = drawFromPool(`${theme?.id || ''}:tasks`, theme?.tasks ?? [], raceProg);
           return {
             kind: 'task',
             data: buildTask('lucky', opponent.id, theme, task, '幸运时刻', 'favorite', 'text-[#FF375F]', true, `${theme?.id || ''}:tasks`),
@@ -910,7 +933,7 @@ export function useGameState() {
             return { kind: 'task', data: heatTask('trap', activePlayer.id, 'tasks', title, 'lock', 'text-[#BF5AF2]') };
           }
           const theme = state.themes.find(t => t.id === opponent.themeId);
-          const task = drawFromPool(`${theme?.id || ''}:tasks`, theme?.tasks ?? []);
+          const task = drawFromPool(`${theme?.id || ''}:tasks`, theme?.tasks ?? [], raceProg);
           return {
             kind: 'task',
             data: buildTask('trap', activePlayer.id, theme, task, title, 'lock', 'text-[#BF5AF2]', true, `${theme?.id || ''}:tasks`),
@@ -927,7 +950,7 @@ export function useGameState() {
           const useDuoPool = !!theme && theme.duoTasks.length > 0;
           const pool = useDuoPool ? theme.duoTasks : theme?.tasks ?? [];
           const key = `${activePlayer.themeId || ''}:${useDuoPool ? 'duoTasks' : 'tasks'}`;
-          const task = drawFromPool(key, pool);
+          const task = drawFromPool(key, pool, raceProg);
           return {
             kind: 'task',
             data: buildTask('duo', activePlayer.id, theme, task, '双人任务', 'duo', 'text-[#FF9F0A]', true, key),
@@ -1144,12 +1167,14 @@ export function useGameState() {
 
       let pool: string[] = [];
       let key = '';
+      let progress: number | undefined;
       if (task.poolKey?.startsWith('band_')) {
-        // 渐进之夜：按卡片来源温度带重抽
+        // 渐进之夜：按卡片来源温度带重抽，深度跟随当前温度
         const bandNum = Number(task.poolKey.split(':')[0].split('_')[1]) || 0;
         const isDuo = task.poolKey.endsWith(':duo');
         pool = isDuo ? poolForBandDuo(bandNum, state.themes) : poolForBandTasks(bandNum, state.themes);
         key = task.poolKey;
+        progress = clamp01((state.heat - BAND_FLOORS[bandNum]) / 20);
       } else if (task.type === 'truth') {
         pool = TRUTH_QUESTIONS;
         key = TRUTH_POOL_KEY;
@@ -1158,13 +1183,15 @@ export function useGameState() {
         const useDuoPool = !!theme && theme.duoTasks.length > 0;
         pool = useDuoPool ? theme.duoTasks : theme?.tasks ?? [];
         key = `${task.taskSourceId}:${useDuoPool ? 'duoTasks' : 'tasks'}`;
+        progress = clamp01((state.players[task.initiatorPlayerId]?.step ?? 0) / WIN_STEP);
       } else {
         const theme = state.themes.find(t => t.id === task.taskSourceId);
         pool = theme?.tasks ?? [];
         key = `${task.taskSourceId}:tasks`;
+        progress = clamp01((state.players[task.initiatorPlayerId]?.step ?? 0) / WIN_STEP);
       }
       if (pool.length <= 1) return null;
-      const nextText = drawFromPool(key, pool);
+      const nextText = drawFromPool(key, pool, progress);
       if (!nextText) return null;
 
       // 稀有金卡换题后褪色为普通卡（题是普通池重抽的，视觉与内容对齐）
@@ -1185,7 +1212,7 @@ export function useGameState() {
       }));
       return updated;
     },
-    [state.themes, drawFromPool]
+    [state.themes, state.heat, state.players, drawFromPool]
   );
 
   // ---- 商店 ----
