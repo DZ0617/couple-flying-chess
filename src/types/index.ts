@@ -168,6 +168,7 @@ export interface GameState {
   // 渐进之夜
   heat: number;
   heatCeiling: number; // 温度上限（带 index 0~4）
+  heatRound: number; // 今晚第几局（1 起，续夜递增）
   pendingGate: number | null; // 待确认的目标温度带
   maxBand: number; // 本局到达过的最高温度带（惩罚档次/征服图鉴用）
   debtList: DebtItem[];
