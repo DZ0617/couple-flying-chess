@@ -12,10 +12,14 @@ interface WinModalProps {
   debtList: DebtItem[];
   mode: GameMode;
   maxBand: number;
+  heat: number;
+  heatCeiling: number;
+  heatRound: number;
   onDrawPunishment: () => string;
   onRemoveDebt: (debtId: string) => void;
   onPayDebt: (debtId: string) => boolean;
   onConvertDebts: (playerId: number) => string | null; // 2 张欠账折 1 次惩罚，返回惩罚文本
+  onContinueNight: () => void;
   onOpenWishShop: () => void;
   onRematch: () => void;
   onGoHome: () => void;
@@ -25,14 +29,49 @@ const BAND_NAMES = ['甜蜜带', '暧昧带', '烈火带', '诱惑带', '灵肉�
 
 export function WinModal({
   isOpen, winner, players, match, records, debtList, mode, maxBand,
+  heat, heatCeiling, heatRound,
   onDrawPunishment, onRemoveDebt, onPayDebt, onConvertDebts,
-  onOpenWishShop, onRematch, onGoHome,
+  onContinueNight, onOpenWishShop, onRematch, onGoHome,
 }: WinModalProps) {
   const [act, setAct] = useState<'report' | 'punish'>('report');
   const [punishment, setPunishment] = useState<string | null>(null);
   const [extraPunishment, setExtraPunishment] = useState<string | null>(null);
 
   if (!isOpen || !winner) return null;
+
+  // 渐进之夜：到过约定上限才算"今晚圆满"，否则进入局间播报、续夜
+  const nightDone = mode !== 'heat' || maxBand >= heatCeiling;
+
+  // —— 夜未尽：精简局间播报（胜负已入账，直接续夜）——
+  if (!nightDone) {
+    return (
+      <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6">
+        <div className="w-full max-w-xs rounded-3xl bg-[#2C2C2E] border border-white/10 p-6 text-center shadow-2xl">
+          <Trophy className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
+          <h3 className="text-xl font-bold text-white mb-1">
+            第 {heatRound} 局 · {winner.name}获胜！
+          </h3>
+          <p className="text-xs text-white/50 mb-4">
+            战绩与心愿银行已入账<br />
+            今晚目前到「{BAND_NAMES[maxBand]}」· 约定是「{BAND_NAMES[heatCeiling]}」<br />
+            <span className="text-[#FF9F0A]">火候未到，夜色继续 —— 温度 {heat}° 带入下一局</span>
+          </p>
+          <button
+            onClick={onContinueNight}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF9F0A] via-[#FF375F] to-[#BF5AF2] font-semibold text-white active:scale-95 transition"
+          >
+            立刻开始第 {heatRound + 1} 局
+          </button>
+          <button
+            onClick={onGoHome}
+            className="w-full mt-2 py-2.5 rounded-xl bg-white/10 text-sm text-white/60 active:scale-95 transition"
+          >
+            今晚到此为止
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const loser = players[winner.id === 0 ? 1 : 0];
   // 用结算时刻算用时，刷新结算页不虚增
@@ -113,8 +152,11 @@ export function WinModal({
         {act === 'report' ? (
           <>
             <Trophy className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
-            <h3 className="text-xl font-bold text-white mb-1">{winner.name}获胜！</h3>
+            <h3 className="text-xl font-bold text-white mb-1">
+              {mode === 'heat' ? `第 ${heatRound} 局 · 今晚圆满` : `${winner.name}获胜！`}
+            </h3>
             <p className="text-xs text-white/50 mb-4">
+              {mode === 'heat' && <>{winner.name}拿下今晚 · </>}
               累计战绩：{players[0].name} {records.wins[0]} 胜 : {records.wins[1]} 胜 {players[1].name}
               <br />
               心愿银行：{records.bank[0]} : {records.bank[1]}
