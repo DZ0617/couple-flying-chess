@@ -83,14 +83,36 @@ export function TaskCardModal({ isOpen, taskData, onAccept, onReject, onSwap }: 
             <span className="text-sm text-white/70">点击翻转查看任务</span>
           </div>
 
-          {/* 背面：稀有卡金色边框 */}
+          {/* 背面：稀有卡流光金框（SVG 描边动画，边框随减少动效偏好关闭） */}
           <div
             className={`flip-face flip-back absolute inset-0 rounded-3xl bg-[#2C2C2E] flex flex-col items-center justify-center gap-3 p-6 text-center shadow-2xl ${
               taskData.rare
-                ? 'border-2 border-[#FFD60A] shadow-[0_0_30px_rgba(255,214,10,0.25)]'
+                ? 'shadow-[0_0_30px_rgba(255,214,10,0.25)]'
                 : 'border border-white/10'
             }`}
           >
+            {taskData.rare && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox="0 0 100 133"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="rareGold" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#FFE066" />
+                    <stop offset="50%" stopColor="#FF9F0A" />
+                    <stop offset="100%" stopColor="#FFE066" />
+                  </linearGradient>
+                </defs>
+                <rect
+                  x="1.2" y="1.2" width="97.6" height="130.6" rx="11"
+                  fill="none" stroke="url(#rareGold)" strokeWidth="1.2"
+                  strokeDasharray="40 300"
+                >
+                  <animate attributeName="stroke-dashoffset" values="0;-340" dur="4s" repeatCount="indefinite" />
+                </rect>
+              </svg>
+            )}
             <div className={taskData.color}>{icon}</div>
             <h3 className="text-lg font-bold text-white">{taskData.title}</h3>
             <p className="text-xs text-white/50">{taskData.subtitle}</p>

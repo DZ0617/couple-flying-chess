@@ -81,3 +81,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .flip-inner, .animate-ping-once, .confetti-piece { transition: none; animation: none; }
 }
+
+/* 前庭敏感用户：关闭 SVG 内的 SMIL 循环动画（护盾光环、稀有卡流光等） */
+@media (prefers-reduced-motion: reduce) {
+  svg animate,
+  svg animateTransform {
+    display: none;
+  }
+}
