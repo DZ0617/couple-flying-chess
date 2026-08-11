@@ -42,7 +42,6 @@ interface GameViewProps {
   onConsumeFrozen: () => void;
   onConsumeRigged: () => void;
   onEndTurn: () => void;
-  onSetRolling: (rolling: boolean) => void;
   onRecordRoll: () => void;
   onApplyBackfire: () => void;
   onSetPendingLanding: (p: { landingStep: number; rollCount: number; dice: number[] } | null) => void;
@@ -59,7 +58,7 @@ export function GameView({
   frozenPlayerId, riggedRoll, grantFeed, pendingLanding, heat, heatCeiling, modalOpen,
   onMove, onResolveLanding, onApplyMovement, onApplyOutcomeMeta, onGainShield,
   onGainHearts, onCheckMilestones, onConsumeFrozen, onConsumeRigged,
-  onEndTurn, onSetRolling, onRecordRoll, onApplyBackfire, onSetPendingLanding,
+  onEndTurn, onRecordRoll, onApplyBackfire, onSetPendingLanding,
   onWin, onTaskTrigger, onSyncTrigger, onOpenShop, onBack, onOpenRules,
 }: GameViewProps) {
   const config = MODE_CONFIGS[mode];
@@ -151,7 +150,6 @@ export function GameView({
 
   const handleRoll = useCallback(() => {
     if (phase !== 'awaitRoll') return;
-    onSetRolling(true);
     onRecordRoll();
     playSound('dice');
     if (navigator.vibrate) navigator.vibrate(20);
@@ -164,7 +162,7 @@ export function GameView({
       setDiceValues(rollDice(config.diceCount));
     }
     setPhase('rolling');
-  }, [phase, riggedRoll, currentTurn, config.diceCount, onSetRolling, onRecordRoll, onConsumeRigged, pushToast]);
+  }, [phase, riggedRoll, currentTurn, config.diceCount, onRecordRoll, onConsumeRigged, pushToast]);
 
   // 桌面端键盘操作：空格掷骰（有弹层盖住时禁用，防止穿透）
   useEffect(() => {
@@ -265,7 +263,6 @@ export function GameView({
   const handleDiceSettled = useCallback(() => {
     settledRef.current += 1;
     if (settledRef.current < config.diceCount || !diceValues) return;
-    onSetRolling(false);
 
     const newCount = rollCount + 1;
     setRollCount(newCount);
@@ -301,7 +298,7 @@ export function GameView({
     later(stepOnce, STEP_DELAY_MS);
   }, [
     diceValues, rollCount, players, currentTurn, config,
-    onSetRolling, onApplyBackfire, onEndTurn, onMove, onSetPendingLanding, pushToast, settleLanding, later,
+    onApplyBackfire, onEndTurn, onMove, onSetPendingLanding, pushToast, settleLanding, later,
   ]);
 
   const activePlayer = players[currentTurn];

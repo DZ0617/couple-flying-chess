@@ -40,7 +40,6 @@ function App() {
     movePlayer,
     applyMovement,
     endTurn,
-    setIsRolling,
     recordRoll,
     applyBackfire,
     checkMilestones,
@@ -104,7 +103,7 @@ function App() {
     setIsShopOpen(false); // 防止胜利弹层被商店盖住
   }, [state.players, state.view, winnerId, state.match.ended, settleMatch]);
 
-  // 一生一世彩蛋：双方停在 13/14 时各 +14（每局限一次，未触发才调用避免重复音效）
+  // 一生一世彩蛋：双方停在 13/14 时各 +7（每局限一次，未触发才调用避免重复音效）
   useEffect(() => {
     if (state.view !== 'game' || winnerId !== null) return;
     if (state.shopUsage['__1314__']) return;
@@ -431,7 +430,6 @@ function App() {
           onConsumeFrozen={consumeFrozen}
           onConsumeRigged={consumeRigged}
           onEndTurn={endTurn}
-          onSetRolling={setIsRolling}
           onRecordRoll={recordRoll}
           onApplyBackfire={applyBackfire}
           onSetPendingLanding={setPendingLanding}

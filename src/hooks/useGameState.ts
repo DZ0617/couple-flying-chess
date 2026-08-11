@@ -27,6 +27,7 @@ const STORAGE_KEY = 'couples-ludo-game-state';
 export const CURRENT_CONTENT_VERSION = 3; // v3：默认主题卡池按"由轻到重"重排（滑动窗口依赖数组顺序）
 const MINI_POOL_KEY = '__mini__';
 const TRUTH_POOL_KEY = '__truth__';
+const TRUTH_RARE_POOL_KEY = '__truth_rare__'; // 稀有真心话独立去重 key（与普通池共用会互相污染）
 
 // 欠账赎买价格（心愿银行）
 export const DEBT_RANSOM = 25;
@@ -251,7 +252,6 @@ function normalizeGameState(saved: unknown): GameState | null {
     themes,
     boardMap: isValidBoardMap(s.boardMap) ? s.boardMap : generateBoardMap(MODE_CONFIGS.double.plan),
     pathCoords: Array.isArray(s.pathCoords) ? s.pathCoords : generateSpiralPath(),
-    isRolling: !!s.isRolling,
     drawnTaskMap,
     pendingTask: pending,
     pendingLanding,
@@ -358,7 +358,6 @@ export function useGameState() {
       themes: DEFAULT_THEMES.map(cloneTheme),
       boardMap: generateBoardMap(MODE_CONFIGS.double.plan),
       pathCoords: generateSpiralPath(),
-      isRolling: false,
       drawnTaskMap: {},
       pendingTask: null,
       pendingLanding: null,
@@ -548,7 +547,6 @@ export function useGameState() {
       }),
       boardMap: generateBoardMap(MODE_CONFIGS[mode].plan),
       match: freshMatch(),
-      isRolling: false,
       drawnTaskMap: {},
       pendingTask: null,
       pendingLanding: null,
@@ -588,7 +586,6 @@ export function useGameState() {
       }),
       boardMap: generateBoardMap(MODE_CONFIGS[prev.mode].plan),
       match: freshMatch(),
-      isRolling: false,
       drawnTaskMap: {},
       pendingTask: null,
       pendingLanding: null,
@@ -620,7 +617,6 @@ export function useGameState() {
         players: prev.players.map(p => ({ ...p, step: 0, shield: false, hearts: 0 })),
         boardMap: generateBoardMap(MODE_CONFIGS[prev.mode].plan),
         match: freshMatch(),          // 新一局独立结算，战绩照常累积
-        isRolling: false,
         drawnTaskMap: prev.drawnTaskMap, // 今晚任务不重复
         pendingTask: null,
         pendingLanding: null,
@@ -665,30 +661,37 @@ export function useGameState() {
     setState(prev => ({
       ...prev,
       turn: prev.turn === 0 ? 1 : 0,
-      isRolling: false,
       queenBuff: tickQueenBuff(prev),
     }));
-  }, []);
-
-  const setIsRolling = useCallback((rolling: boolean) => {
-    setState(prev => ({ ...prev, isRolling: rolling }));
   }, []);
 
   const recordRoll = useCallback(() => {
     setState(prev => ({ ...prev, match: { ...prev.match, rolls: prev.match.rolls + 1 } }));
   }, []);
 
+  // 三连反噬：回起点 + 补偿 Hearts（走女王时刻重定向，落款到账）
   const applyBackfire = useCallback(() => {
     setState(prev => {
+      const qb = prev.queenBuff;
+      const target = qb ? qb.beneficiary : prev.turn;
       const bonus = REWARD.backfire * heartsMultiplier();
       const earned: [number, number] = [...prev.match.heartsEarned];
-      earned[prev.turn] += bonus;
+      earned[target] += bonus;
+      const after = (prev.players[target]?.hearts ?? 0) + bonus;
+      const name = prev.players[target]?.name ?? '';
       return {
         ...prev,
-        players: prev.players.map(p =>
-          p.id === prev.turn ? { ...p, step: 0, hearts: p.hearts + bonus } : p
-        ),
+        players: prev.players.map(p => {
+          if (p.id === prev.turn && p.id === target) return { ...p, step: 0, hearts: after };
+          if (p.id === prev.turn) return { ...p, step: 0 };
+          if (p.id === target) return { ...p, hearts: after };
+          return p;
+        }),
         match: { ...prev.match, backfires: prev.match.backfires + 1, heartsEarned: earned },
+        grantFeed: {
+          id: Date.now() + Math.random(),
+          text: `${name} +${bonus} · 三连反噬补偿${qb && target !== prev.turn ? '（女王时刻）' : ''}`,
+        },
       };
     });
   }, []);
@@ -828,8 +831,8 @@ export function useGameState() {
       const useTruth = MODE_CONFIGS[state.mode].useTruthDare;
       const isHeat = state.mode === 'heat';
       const band = effectiveBand(state.heat, state.heatCeiling);
-      // 赛程进度（非温度模式）：棋子越靠近终点，抽到的卡越深
-      const raceProg = clamp01(activePlayer.step / WIN_STEP);
+      // 赛程进度：以"落点"为准（入参），不是掷骰前的起点（双骰最多差 12 格，避免抽卡偏温和）
+      const raceProg = clamp01(landingStep / WIN_STEP);
       // 带内温度进度（渐进之夜）：刚进带抽最温和的，带内越玩越深
       const bandProg = clamp01((state.heat - BAND_FLOORS[band]) / 20);
 
@@ -872,7 +875,8 @@ export function useGameState() {
       ): TaskEventData => {
         const pool = field === 'duo' ? poolForBandDuo(band, state.themes) : poolForBandTasks(band, state.themes);
         const key = `band_${band}:${field}`;
-        const task = drawFromPool(key, pool, bandProg) || '和对方深情对视 30 秒'; // 空池兜底
+        // 空池兜底（用户把默认主题卡删光时）：先补一条轻松互动，最后才是固定文案，防空白任务卡
+        const task = drawFromPool(key, pool, bandProg) || drawFromPool(MINI_POOL_KEY, MINI_INTERACTIONS) || '和对方深情对视 30 秒';
         return buildTask(type, executorId, undefined, task, title, icon, color, rejectable, key, `任务来自「${BAND_NAMES[band]}」`);
       };
 
@@ -900,14 +904,19 @@ export function useGameState() {
         if (tileType === 'lucky') {
           grants.push({ playerId: activePlayer.id, amount: REWARD.luckyTile, reason: '幸运格' });
           if (useTruth) {
-            const drawnCount = (state.drawnTaskMap[TRUTH_POOL_KEY] ?? []).length;
-            const rare = (drawnCount + 1) % 7 === 0;
+            // 稀有/普通真心话分池去重（共用 key 会让 7 条稀有题被普通池的索引污染）；
+            // 稀有节奏按"真心话总抽取数"计数（普通+稀有），保持每第 7 题稀有的设计
+            const truthDrawn =
+              (state.drawnTaskMap[TRUTH_POOL_KEY] ?? []).length +
+              (state.drawnTaskMap[TRUTH_RARE_POOL_KEY] ?? []).length;
+            const rare = (truthDrawn + 1) % 7 === 0;
             const pool = rare ? RARE_TRUTH_QUESTIONS : TRUTH_QUESTIONS;
-            const q = drawFromPool(TRUTH_POOL_KEY, pool);
+            const poolKey = rare ? TRUTH_RARE_POOL_KEY : TRUTH_POOL_KEY;
+            const q = drawFromPool(poolKey, pool);
             return {
               kind: 'task',
               data: {
-                ...buildTask('truth', opponent.id, undefined, q, rare ? '稀有真心话 ✦' : '真心话', 'message', rare ? 'text-[#FFD60A]' : 'text-[#64D2FF]', true, TRUTH_POOL_KEY),
+                ...buildTask('truth', opponent.id, undefined, q, rare ? '稀有真心话 ✦' : '真心话', 'message', rare ? 'text-[#FFD60A]' : 'text-[#64D2FF]', true, poolKey),
                 rare,
               },
             };
@@ -1146,7 +1155,6 @@ export function useGameState() {
         ...prev,
         players: nextPlayers,
         turn: prev.turn === 0 ? 1 : 0,
-        isRolling: false,
         pendingTask: null,
         pendingLanding: null,
         heat,
@@ -1246,20 +1254,24 @@ export function useGameState() {
         const debt = state.debtList.find(d => d.ownerPlayerId === male.id);
         let text = '';
         let poolKey: string | undefined;
+        let sourceLabel = '';
         if (debt) {
           text = debt.task;
           princessDebtId = debt.id;
+          sourceLabel = '强制还账';
         } else if (state.mode === 'heat') {
           // 渐进之夜：按当前温度带的带内进度抽（刚进带不会抽到最重口的）
           const pool = poolForBandTasks(band, state.themes);
           poolKey = `band_${band}:tasks`;
           text = drawFromPool(poolKey, pool, clamp01((state.heat - BAND_FLOORS[band]) / 20));
+          sourceLabel = `任务来自「${BAND_NAMES[band]}」`;
         } else {
           // 非温度模式：从男方所选主题池抽，深度跟随男方赛程
           const mTheme = state.themes.find(t => t.id === male.themeId);
           const pool = mTheme?.tasks ?? [];
           poolKey = `${male.themeId || ''}:tasks`;
           text = drawFromPool(poolKey, pool, clamp01(male.step / WIN_STEP));
+          sourceLabel = mTheme ? `任务来自「${mTheme.name}」` : '';
         }
         if (!text) return false;
         princessTask = {
@@ -1268,7 +1280,7 @@ export function useGameState() {
           executorPlayerId: male.id,
           rejectable: false,
           title: '公主令',
-          subtitle: princessDebtId ? '强制还账 · 不可拒绝' : `任务来自「${BAND_NAMES[band]}」· 不可拒绝`,
+          subtitle: `${sourceLabel} · 不可拒绝`,
           icon: 'favorite',
           color: 'text-[#FF375F]',
           task: text,
@@ -1512,7 +1524,6 @@ export function useGameState() {
         pendingGate,
         maxBand,
         turn: prev.turn === 0 ? 1 : 0,
-        isRolling: false,
         pendingSync: null,
         pendingLanding: null,
         queenBuff: tickQueenBuff(prev),
@@ -1587,7 +1598,6 @@ export function useGameState() {
       players: prev.players.map(p => ({ ...p, step: 0, shield: false, hearts: 0 })), // 保留 themeId
       boardMap: generateBoardMap(MODE_CONFIGS[prev.mode].plan),
       pathCoords: generateSpiralPath(),
-      isRolling: false,
       drawnTaskMap: {},
       pendingTask: null,
       pendingLanding: null,
@@ -1621,7 +1631,6 @@ export function useGameState() {
     movePlayer,
     applyMovement,
     endTurn,
-    setIsRolling,
     recordRoll,
     applyBackfire,
     checkMilestones,

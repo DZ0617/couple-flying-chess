@@ -159,7 +159,6 @@ export interface GameState {
   themes: Theme[];
   boardMap: TileType[];
   pathCoords: PathCoord[];
-  isRolling: boolean;
   drawnTaskMap: Record<string, number[]>;
   pendingTask: TaskEventData | null;
   pendingLanding: { landingStep: number; rollCount: number; dice: number[] } | null;

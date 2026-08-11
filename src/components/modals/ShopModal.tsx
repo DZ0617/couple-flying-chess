@@ -106,7 +106,7 @@ export function ShopModal({ isOpen, buyer, opponent, mode, usage, onClose, onPur
                     } else {
                       onPurchase(item.id);
                     }
-                    if (item.id !== 'nuke') setConfirmNuke(false);
+                    setConfirmNuke(false); // 购买/进入指定后复位，避免"确认清零？"文案残留
                   }}
                   className="shrink-0 h-9 px-3 rounded-full bg-gradient-to-r from-[#FF375F] to-[#BF5AF2] text-white text-sm font-bold disabled:opacity-30 active:scale-95 transition flex items-center gap-1"
                 >

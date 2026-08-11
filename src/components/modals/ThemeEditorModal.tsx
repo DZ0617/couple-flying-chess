@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { Theme } from '../../types';
 import { ModalSheet } from '../ModalSheet';
+import { CONQUER_LEVEL_IDS } from '../../data/shopItems';
 
 type TaskField = 'tasks' | 'duoTasks';
 
@@ -57,6 +58,8 @@ export function ThemeEditorModal({
   if (!isOpen || !theme) return null;
 
   const taskList = theme[field];
+  // 内置主题参与渐进之夜温度池：禁止删到一张不剩（否则抽池被掏空）
+  const isBuiltin = CONQUER_LEVEL_IDS.includes(theme.id);
 
   return (
     <ModalSheet isOpen={isOpen} onClose={onClose}>
@@ -192,6 +195,11 @@ export function ThemeEditorModal({
             <div className="text-xs text-gray-400">{field === 'duoTasks' ? '双人卡组列表' : '任务卡列表'}</div>
             <div className="text-[10px] text-gray-500">{taskList.length} 卡</div>
           </div>
+          {isBuiltin && (
+            <p className="text-[10px] text-[#FF9F0A] -mt-1">
+              内置主题参与渐进之夜抽池，至少保留一张（当前可删：{Math.max(0, taskList.length - 1)} 张）
+            </p>
+          )}
           <div className="space-y-2">
             {taskList.map((t, idx) => (
               <div
@@ -201,7 +209,9 @@ export function ThemeEditorModal({
                 <div className="text-[11px] text-gray-500 mt-0.5">{idx + 1}</div>
                 <div className="flex-1 text-sm text-white leading-relaxed">{t}</div>
                 <button
-                  className="h-8 w-8 rounded-lg bg-black/20 text-[#FF453A] ios-btn flex items-center justify-center"
+                  disabled={isBuiltin && taskList.length <= 1}
+                  title={isBuiltin && taskList.length <= 1 ? '内置主题至少保留一张卡' : '删除'}
+                  className="h-8 w-8 rounded-lg bg-black/20 text-[#FF453A] ios-btn flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                   onClick={() => onRemoveTask(theme.id, idx, field)}
                 >
                   <Trash2 size={16} />

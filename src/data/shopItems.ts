@@ -15,7 +15,7 @@ export interface ShopItem {
 export const SHOP_ITEMS: ShopItem[] = [
   // 战术
   { id: 'charm',    category: 'tactical', name: '护身符',   price: 45,  desc: '立即获得一层护盾，抵挡一次陷阱或追尾' },
-  { id: 'leap',     category: 'tactical', name: '飞跃卡',   price: 35,  desc: '立即前进 4 格，落点不触发效果' },
+  { id: 'leap',     category: 'tactical', name: '飞跃卡',   price: 35,  desc: '立即前进 4 格（可直接冲线获胜），落点不触发效果' },
   { id: 'recall',   category: 'tactical', name: '回溯卡',   price: 35,  desc: '对方后退 4 格，落点不触发效果', leaderRestricted: true },
   { id: 'freeze',   category: 'tactical', name: '定身符',   price: 30,  desc: '对方下一回合跳过掷骰', leaderRestricted: true },
   { id: 'remote',   category: 'tactical', name: '遥控骰子', price: 60,  desc: '指定对方下次掷骰的总点数', leaderRestricted: true, needsRigTotal: true },
@@ -31,10 +31,10 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'obey',     category: 'service', name: '听令券',   price: 60, desc: '对方无条件答应一个合理小要求' },
   // 娱乐
   { id: 'mystery',   category: 'gamble', name: '心愿盲盒', price: 50, desc: '随机开出 20~120 Hearts' },
-  { id: 'roulette',  category: 'gamble', name: '命运轮盘', price: 30, desc: '前进3 / 后退3 / 双方+15 / 换位 / 无事发生' },
+  { id: 'roulette',  category: 'gamble', name: '命运轮盘', price: 30, desc: '前进3（可直接冲线）/ 后退3 / 双方+15 / 换位 / 无事发生' },
   { id: 'robinhood', category: 'gamble', name: '劫富济贫', price: 40, desc: 'Hearts 多的一方转 30 给少的一方' },
   // 特权（女方专属）
-  { id: 'princess', category: 'privilege', name: '公主令', price: 50, desc: '命令男方立刻完成一张他的欠账卡；没有欠账则按当前尺度抽一张，不可拒绝', limitPerMatch: 1, femaleOnly: true },
+  { id: 'princess', category: 'privilege', name: '公主令', price: 50, desc: '命令男方立刻完成一张他的欠账卡；没有欠账则按当前尺度抽一张，不可拒绝；任务完成你 +10 Hearts 并前进 1 格', limitPerMatch: 1, femaleOnly: true },
   { id: 'queen',    category: 'privilege', name: '女王时刻', price: 80, desc: '接下来 3 个回合，男方获得的 Hearts 全部归你', limitPerMatch: 1, femaleOnly: true },
 ];
 
