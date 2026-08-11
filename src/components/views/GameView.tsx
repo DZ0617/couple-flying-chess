@@ -309,12 +309,12 @@ export function GameView({
   return (
     <div className={`fixed inset-0 z-50 ${modeBg[mode]} text-white flex flex-col overflow-y-auto`}>
       <header className="flex items-center justify-between px-4 py-3 shrink-0 md:max-w-5xl md:mx-auto md:w-full">
-        <button onClick={onBack} className="p-2 -ml-2 text-white/70 hover:text-white" aria-label="返回">
+        <button onClick={onBack} disabled={modalOpen} className="p-2 -ml-2 text-white/70 hover:text-white disabled:opacity-40" aria-label="返回">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <button
           onClick={onOpenShop}
-          disabled={phase !== 'awaitRoll'}
+          disabled={phase !== 'awaitRoll' || modalOpen}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 disabled:opacity-40 active:scale-95 transition"
         >
           <ShoppingBag className="w-4 h-4 text-[#FF9F0A]" />
@@ -332,7 +332,7 @@ export function GameView({
           >
             {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
-          <button onClick={onOpenRules} className="p-2 -mr-2 text-white/70 hover:text-white" aria-label="规则">
+          <button onClick={onOpenRules} disabled={modalOpen} className="p-2 -mr-2 text-white/70 hover:text-white disabled:opacity-40" aria-label="规则">
             <HelpCircle className="w-5 h-5" />
           </button>
         </div>

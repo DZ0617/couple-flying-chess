@@ -87,9 +87,10 @@ function App() {
   // 任务卡改由存档驱动（B3：防刷新逃避）
   const taskData = state.pendingTask;
 
-  // 有弹层盖住时禁用 GameView 的空格掷骰与掷骰按钮（防穿透）
+  // 有弹层盖住时禁用 GameView 的空格掷骰/掷骰按钮/顶栏按钮（防穿透）。
+  // winnerId 兜底：胜利弹层打开后，背后的返回/商店/规则不可再点（防止在弹层后面再开一层）
   const modalOpen =
-    state.pendingGate !== null || !!state.pendingTask || !!state.pendingSync ||
+    winnerId !== null || state.pendingGate !== null || !!state.pendingTask || !!state.pendingSync ||
     isShopOpen || isLeaveOpen || isRulesOpen || isDebtOpen;
 
   // 统一胜利监听：任何来源的位移到达终点都判胜（B2）
@@ -292,7 +293,12 @@ function App() {
         mode={state.mode}
         usage={state.shopUsage}
         onClose={() => setIsShopOpen(false)}
-        onPurchase={purchaseItem}
+        onPurchase={(id, opts) => {
+          const ok = purchaseItem(id, opts);
+          // 公主令会弹出强制任务卡（TaskCardModal 与商店同为 z-115，商店在 DOM 里后渲染会盖住任务卡），先关商店
+          if (ok && id === 'princess') setIsShopOpen(false);
+          return ok;
+        }}
       />
 
       <WishlistModal

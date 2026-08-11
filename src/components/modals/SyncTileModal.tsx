@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Users, Eye, PartyPopper, Frown } from 'lucide-react';
-import { Player, SyncChallenge } from '../../types';
+import { Player, SyncChallenge, SyncResult } from '../../types';
 import { useLockBody } from '../../hooks/useLockBody';
 import { playSound } from '../../utils/sound';
 
@@ -10,7 +10,7 @@ interface SyncTileModalProps {
   isOpen: boolean;
   challenge: SyncChallenge | null;
   players: Player[];
-  onResolve: (matched: boolean) => string | null; // 不一致时返回惩罚文本
+  onResolve: (matched: boolean) => SyncResult; // 返回实际结算数值（Hearts/温度），结果页据此展示
   onClose: () => void;
 }
 
@@ -18,7 +18,7 @@ export function SyncTileModal({ isOpen, challenge, players, onResolve, onClose }
   const [stage, setStage] = useState<Stage>('answer');
   const [ansA, setAnsA] = useState('');
   const [ansB, setAnsB] = useState('');
-  const [punishment, setPunishment] = useState<string | null>(null);
+  const [result, setResult] = useState<SyncResult | null>(null);
   const [matched, setMatched] = useState(false);
 
   useLockBody(isOpen);
@@ -28,7 +28,7 @@ export function SyncTileModal({ isOpen, challenge, players, onResolve, onClose }
       setStage('answer');
       setAnsA('');
       setAnsB('');
-      setPunishment(null);
+      setResult(null);
       setMatched(false);
     }
   }, [isOpen]);
@@ -37,9 +37,8 @@ export function SyncTileModal({ isOpen, challenge, players, onResolve, onClose }
 
   const judge = (ok: boolean) => {
     setMatched(ok);
-    const p = onResolve(ok);
+    setResult(onResolve(ok));
     if (ok) playSound('hearts'); else playSound('backfire');
-    setPunishment(p);
     setStage('result');
   };
 
@@ -120,7 +119,10 @@ export function SyncTileModal({ isOpen, challenge, players, onResolve, onClose }
               <>
                 <PartyPopper className="w-10 h-10 text-[#FFD60A] mx-auto" />
                 <p className="text-base font-semibold text-white">默契满分！</p>
-                <p className="text-xs text-white/60">双方 +10 Hearts，温度 +4°</p>
+                <p className="text-xs text-white/60">
+                  双方 +{result?.hearts ?? 10} Hearts
+                  {result?.heat != null ? `，温度 +${result.heat}°` : ''}
+                </p>
               </>
             ) : (
               <>
@@ -128,8 +130,11 @@ export function SyncTileModal({ isOpen, challenge, players, onResolve, onClose }
                 <p className="text-base font-semibold text-white">默契值为零…</p>
                 <div className="rounded-xl bg-[#FF375F]/10 border border-[#FF375F]/30 p-3">
                   <div className="text-[10px] text-[#FF375F] mb-1">小惩罚</div>
-                  <div className="text-sm text-white">{punishment}</div>
+                  <div className="text-sm text-white">{result?.punishment}</div>
                 </div>
+                {result?.heat != null && (
+                  <p className="text-[10px] text-white/40">温度 +{result.heat}°</p>
+                )}
               </>
             )}
             <button

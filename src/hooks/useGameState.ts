@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   GameState, GameMode, Player, TaskEventData, Theme, Movement,
   LandingOutcome, LandingResolution, LandingMeta, HeartGrant, MatchStats,
-  Wish, DebtItem, SyncChallenge,
+  Wish, DebtItem, SyncChallenge, QueenBuff, SyncResult,
 } from '../types';
 import { loadFromStorage, saveToStorage } from '../utils/localStorage';
 import {
@@ -49,6 +49,15 @@ function freshMatch(): MatchStats {
     rolls: 0, tasksCompleted: 0, tasksRejected: 0, swaps: 0, backfires: 0,
     heartsEarned: [0, 0], streaks: [0, 0], startedAt: Date.now(), ended: false,
   };
+}
+
+// 女王时刻层数递减：只在「非受益方」的回合结束时消耗一层。
+// 受益方自己购买后的当回合结束不扣（否则描述"3 回合"实际只覆盖 2 个对方回合）
+function tickQueenBuff(prev: Pick<GameState, 'turn' | 'queenBuff'>): QueenBuff | null {
+  const qb = prev.queenBuff;
+  if (!qb) return null;
+  if (prev.turn === qb.beneficiary) return qb;
+  return qb.turnsLeft <= 1 ? null : { ...qb, turnsLeft: qb.turnsLeft - 1 };
 }
 
 function cloneTheme(t: Theme): Theme {
@@ -256,6 +265,7 @@ function normalizeGameState(saved: unknown): GameState | null {
       streaks: pair(m.streaks),
       startedAt: typeof m.startedAt === 'number' ? m.startedAt : Date.now(),
       ended: !!m.ended,
+      endedAt: typeof m.endedAt === 'number' ? m.endedAt : undefined,
     },
     records: {
       games: typeof r.games === 'number' ? r.games : 0,
@@ -656,11 +666,7 @@ export function useGameState() {
       ...prev,
       turn: prev.turn === 0 ? 1 : 0,
       isRolling: false,
-      queenBuff: prev.queenBuff
-        ? prev.queenBuff.turnsLeft <= 1
-          ? null
-          : { ...prev.queenBuff, turnsLeft: prev.queenBuff.turnsLeft - 1 }
-        : null,
+      queenBuff: tickQueenBuff(prev),
     }));
   }, []);
 
@@ -1133,8 +1139,8 @@ export function useGameState() {
             ]
           : prev.debtList;
 
-      // 女王时刻随回合切换递减
-      const queenBuff = qb ? (qb.turnsLeft <= 1 ? null : { ...qb, turnsLeft: qb.turnsLeft - 1 }) : null;
+      // 女王时刻随回合切换递减（受益方自己的回合结束不消耗，见 tickQueenBuff）
+      const queenBuff = tickQueenBuff(prev);
 
       return {
         ...prev,
@@ -1468,20 +1474,23 @@ export function useGameState() {
     });
   }, []);
 
-  // 默契考验结算：一致双方 +10 且温度 +4；不一致抽搞笑惩罚且温度 +2；换人
-  const resolveSync = useCallback((matched: boolean): string | null => {
+  // 默契考验结算：一致双方各 +10 Hearts（七夕翻倍）且温度 +6°；不一致抽搞笑惩罚且温度 +3°；换人
+  // 数值以 HEAT_GAIN 为准；返回值携带实际数值供结果页展示（不再写死文案）
+  const resolveSync = useCallback((matched: boolean): SyncResult => {
     let punishment: string | null = null;
     if (!matched) {
       punishment = drawFromPool('__pun_funny__', PUNISH_FUNNY) || PUNISH_FUNNY[0];
     }
     const m = heartsMultiplier();
+    const hearts = matched ? 10 * m : 0;
+    const heatDelta = matched ? HEAT_GAIN.syncMatch : HEAT_GAIN.syncMiss;
     setState(prev => {
       let heat = prev.heat;
       let pendingGate = prev.pendingGate;
       let maxBand = prev.maxBand;
       if (prev.mode === 'heat') {
         const bandBefore = effectiveBand(prev.heat, prev.heatCeiling);
-        heat = clampHeat(prev.heat + (matched ? HEAT_GAIN.syncMatch : HEAT_GAIN.syncMiss));
+        heat = clampHeat(prev.heat + heatDelta);
         const bandAfter = effectiveBand(heat, prev.heatCeiling);
         maxBand = Math.max(maxBand, bandAfter);
         if (bandAfter > bandBefore && pendingGate === null) pendingGate = bandAfter;
@@ -1490,13 +1499,12 @@ export function useGameState() {
       const earned: [number, number] = [...prev.match.heartsEarned] as [number, number];
       let feedText = '默契值为零…小惩罚伺候';
       if (matched) {
-        const g = 10 * m;
-        players = prev.players.map(p => ({ ...p, hearts: p.hearts + g }));
-        earned[0] += g;
-        earned[1] += g;
-        feedText = `默契满分！双方 +${g} Hearts`;
+        // 默契奖励是「双方共同所得」，不走女王时刻重定向（避免结果页写"双方+10"却单边到账的观感）
+        players = prev.players.map(p => ({ ...p, hearts: p.hearts + hearts }));
+        earned[0] += hearts;
+        earned[1] += hearts;
+        feedText = `默契满分！双方 +${hearts} Hearts`;
       }
-      const qb = prev.queenBuff;
       return {
         ...prev,
         players,
@@ -1507,14 +1515,18 @@ export function useGameState() {
         isRolling: false,
         pendingSync: null,
         pendingLanding: null,
-        queenBuff: qb ? (qb.turnsLeft <= 1 ? null : { ...qb, turnsLeft: qb.turnsLeft - 1 }) : null,
+        queenBuff: tickQueenBuff(prev),
         match: { ...prev.match, heartsEarned: earned },
         grantFeed: { id: Date.now() + Math.random(), text: feedText },
       };
     });
     if (matched) playSound('hearts');
-    return punishment;
-  }, [drawFromPool]);
+    return {
+      punishment,
+      hearts,
+      heat: state.mode === 'heat' ? heatDelta : null,
+    };
+  }, [drawFromPool, state.mode]);
 
   // 欠账：补做销账（免费）
   const removeDebt = useCallback((debtId: string) => {

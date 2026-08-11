@@ -139,6 +139,13 @@ export interface SyncChallenge {
   question: string;
 }
 
+// 默契考验结算结果：携带实际数值，供结果页展示（避免文案与数值脱节）
+export interface SyncResult {
+  punishment: string | null;
+  hearts: number;      // 一致时双方各得的 Hearts（已含七夕倍数）
+  heat: number | null; // 温度变化；非渐进之夜为 null
+}
+
 export interface QueenBuff {
   turnsLeft: number;
   beneficiary: number;
