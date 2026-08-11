@@ -89,3 +89,24 @@ body {
     display: none;
   }
 }
+
+/* ===== 第二阶段：3D 骰子 & 稀有卡 ===== */
+@keyframes dice-tumble {
+  0% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(-10deg) translateY(-6px); }
+  50% { transform: rotate(8deg) translateY(2px); }
+  75% { transform: rotate(-6deg) translateY(-4px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+.animate-dice-tumble {
+  animation: dice-tumble 0.45s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-dice-tumble {
+    animation: none;
+  }
+  .svg-anim {
+    display: none;
+  }
+}
