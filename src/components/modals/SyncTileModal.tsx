@@ -63,11 +63,15 @@ export function SyncTileModal({ isOpen, challenge, players, onResolve, onClose }
               <div key={i} className="space-y-1">
                 <div className="text-[10px] text-gray-500">{f.label}</div>
                 <input
-                  type="password"
+                  type="text"
                   value={f.value}
                   onChange={e => f.set(e.target.value)}
                   maxLength={30}
-                  className="w-full h-11 px-4 rounded-xl bg-black/30 text-white outline-none border border-white/10 focus:border-[#FFD60A]/50"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="text-mask w-full h-11 px-4 rounded-xl bg-black/30 text-white outline-none border border-white/10 focus:border-[#FFD60A]/50"
                   placeholder="各自悄悄写下答案"
                 />
               </div>

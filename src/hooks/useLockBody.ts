@@ -6,13 +6,9 @@ let lockCount = 0;
 
 export function useLockBody(locked: boolean) {
   useEffect(() => {
-    if (locked) {
-      lockCount += 1;
-      document.body.style.overflow = 'hidden';
-    } else {
-      lockCount = Math.max(0, lockCount - 1);
-      if (lockCount === 0) document.body.style.overflow = '';
-    }
+    if (!locked) return;
+    lockCount += 1;
+    document.body.style.overflow = 'hidden';
     return () => {
       lockCount = Math.max(0, lockCount - 1);
       if (lockCount === 0) document.body.style.overflow = '';

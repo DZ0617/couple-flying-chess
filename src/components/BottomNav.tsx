@@ -7,7 +7,7 @@ interface BottomNavProps {
 
 export function BottomNav({ activeView, onNavigate }: BottomNavProps) {
   return (
-    <nav className="h-[84px] ios-glass border-t border-white/5 flex items-start justify-around pt-3 shrink-0 z-50">
+    <nav className="h-[calc(84px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] ios-glass border-t border-white/5 flex items-start justify-around pt-3 shrink-0 z-50">
       <button
         className={`group flex flex-col items-center gap-1 w-16 transition-opacity ${
           activeView === 'home' || activeView === 'game' ? 'opacity-100' : 'opacity-50'

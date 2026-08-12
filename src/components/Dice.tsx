@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface DiceProps {
   value: number | null;
@@ -7,133 +7,137 @@ interface DiceProps {
   onSettled?: () => void;
 }
 
-// 骰面点数布局：以面心为原点的 (u, v) 网格坐标
-const PIPS: Record<number, Array<[number, number]>> = {
-  1: [[0, 0]],
-  2: [[-1, 1], [1, -1]],
-  3: [[-1, 1], [0, 0], [1, -1]],
-  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
-  5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
-  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
+const SIZE = 54; // 立方体边长（px）
+const HALF = SIZE / 2;
+const TILT = { x: -16, y: -22 }; // 静止展示倾角：能同时看到顶面与侧面
+
+// 点数朝前时立方体要转到的角度（对面之和为 7）
+const FACE_ROT: Record<number, { x: number; y: number }> = {
+  1: { x: 0, y: 0 },
+  2: { x: -90, y: 0 },
+  3: { x: 0, y: -90 },
+  4: { x: 0, y: 90 },
+  5: { x: 90, y: 0 },
+  6: { x: 0, y: 180 },
 };
 
-// 顶面为 n 时的两个侧面点数（标准骰：对面之和为 7，侧面避开顶面与对面）
-const SIDES: Record<number, [number, number]> = {
-  1: [2, 3],
-  2: [1, 3],
-  3: [1, 2],
-  4: [2, 5],
-  5: [3, 4],
-  6: [4, 5],
+// 六个面在立方体上的摆放位置
+const FACE_PLACE: Record<number, string> = {
+  1: `rotateY(0deg) translateZ(${HALF}px)`,
+  2: `rotateX(90deg) translateZ(${HALF}px)`,
+  3: `rotateY(90deg) translateZ(${HALF}px)`,
+  4: `rotateY(-90deg) translateZ(${HALF}px)`,
+  5: `rotateX(-90deg) translateZ(${HALF}px)`,
+  6: `rotateY(180deg) translateZ(${HALF}px)`,
 };
 
-// 等轴测三个面的点数投影
-const topPos = (u: number, v: number): [number, number] => [60 + (u - v) * 15, 40 + (u + v) * 8.5];
-const leftPos = (u: number, v: number): [number, number] => [34 + u * 16.1, 80 + u * 9.3 + v * 13.75];
-const rightPos = (u: number, v: number): [number, number] => [86 - u * 16.1, 80 + u * 9.3 + v * 13.75];
+// 3×3 宫格中的点数位置
+const PIPS: Record<number, number[]> = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+};
 
-function FacePips({
-  value,
-  project,
-  rx,
-  ry,
-  fill,
-}: {
-  value: number;
-  project: (u: number, v: number) => [number, number];
-  rx: number;
-  ry: number;
-  fill: string;
-}) {
+const randFace = () => Math.floor(Math.random() * 6) + 1;
+
+// 折算到离 ref 最近的等价角度（±360k）：翻滚与停骰都走最短路径，不倒退
+const nearest = (target: number, ref: number) =>
+  target + 360 * Math.round((ref - target) / 360);
+
+function Face({ value }: { value: number }) {
+  const accent = value === 1 || value === 4; // 传统骰子 1/4 点用红色系（这里用品牌粉）
   return (
-    <>
-      {PIPS[value].map(([u, v], i) => {
-        const [x, y] = project(u, v);
-        return <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry} fill={fill} />;
-      })}
-    </>
+    <div className="dice-face" style={{ transform: FACE_PLACE[value] }}>
+      {Array.from({ length: 9 }).map((_, i) => (
+        <span key={i} className="dice-cell">
+          {PIPS[value].includes(i) && (
+            <i className={`dice-dot${accent ? ' accent' : ''}${value === 1 ? ' big' : ''}`} />
+          )}
+        </span>
+      ))}
+    </div>
   );
 }
 
 export function Dice({ value, rolling, delay = 0, onSettled }: DiceProps) {
-  const [face, setFace] = useState<number>(1);
+  const [face, setFace] = useState(1);
   const [spinning, setSpinning] = useState(false);
+  const [rot, setRot] = useState(TILT);
+  const rotRef = useRef(rot);
   const onSettledRef = useRef(onSettled);
   onSettledRef.current = onSettled;
   const firedRef = useRef(false);
-  const uid = useId().replace(/:/g, '');
+
+  // 转到目标点数（保持展示倾角，沿最短路径）
+  const turnTo = (f: number) => {
+    const cur = rotRef.current;
+    const next = {
+      x: nearest(TILT.x + FACE_ROT[f].x, cur.x),
+      y: nearest(TILT.y + FACE_ROT[f].y, cur.y),
+    };
+    rotRef.current = next;
+    setRot(next);
+    setFace(f);
+  };
 
   useEffect(() => {
     if (!rolling) return;
     firedRef.current = false;
     setSpinning(true);
-    const shuffle = setInterval(() => {
-      setFace(Math.floor(Math.random() * 6) + 1);
-    }, 80);
-    const stop = setTimeout(() => {
-      clearInterval(shuffle);
-      if (value) setFace(value);
+    // 快速朝随机面翻转：短过渡串联起来就是连续翻滚
+    const shuffle = window.setInterval(() => {
+      setRot(prev => {
+        const f = randFace();
+        const next = {
+          x: nearest(TILT.x + FACE_ROT[f].x, prev.x),
+          y: nearest(TILT.y + FACE_ROT[f].y, prev.y),
+        };
+        rotRef.current = next;
+        return next;
+      });
+    }, 90);
+    const stop = window.setTimeout(() => {
+      window.clearInterval(shuffle);
       setSpinning(false);
+      if (value) turnTo(value);
       if (!firedRef.current) {
         firedRef.current = true;
         onSettledRef.current?.();
       }
     }, 750 + delay);
     return () => {
-      clearInterval(shuffle);
-      clearTimeout(stop);
+      window.clearInterval(shuffle);
+      window.clearTimeout(stop);
     };
   }, [rolling, value, delay]);
 
   useEffect(() => {
-    if (!rolling && value) setFace(value);
+    if (!rolling && value) turnTo(value);
   }, [rolling, value]);
 
   // 连掷间隙 / 回合切换时清空残留点数（B6）
   useEffect(() => {
-    if (!rolling && value === null) setFace(1);
+    if (!rolling && value === null) turnTo(1);
   }, [rolling, value]);
 
-  const [leftFace, rightFace] = SIDES[face] ?? SIDES[1];
-
   return (
-    <div className={`w-16 h-16 ${spinning ? 'animate-dice-tumble' : ''}`}>
-      <svg
-        viewBox="0 0 120 140"
-        className="w-full h-full drop-shadow-lg"
-        role="img"
-        aria-label={`骰子 ${face} 点`}
-      >
-        <defs>
-          <linearGradient id={`dt${uid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#E4E4EA" />
-          </linearGradient>
-          <linearGradient id={`dl${uid}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#C9C9D4" />
-            <stop offset="100%" stopColor="#9A9AA8" />
-          </linearGradient>
-          <linearGradient id={`dr${uid}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#B4B4C2" />
-            <stop offset="100%" stopColor="#84848F" />
-          </linearGradient>
-        </defs>
-
-        {/* 侧面先画，顶面盖在上面 */}
-        <path d="M8 40 L60 70 L60 120 L8 90 Z" fill={`url(#dl${uid})`} />
-        <path d="M112 40 L60 70 L60 120 L112 90 Z" fill={`url(#dr${uid})`} />
-        <FacePips value={leftFace} project={leftPos} rx={3.9} ry={4.5} fill="#4A4A55" />
-        <FacePips value={rightFace} project={rightPos} rx={3.9} ry={4.5} fill="#3F3F4A" />
-
-        {/* 顶面 */}
-        <path
-          d="M8 40 L60 10 L112 40 L60 70 Z"
-          fill={`url(#dt${uid})`}
-          stroke="rgba(255,255,255,0.6)"
-          strokeWidth="1"
-        />
-        <FacePips value={face} project={topPos} rx={5.6} ry={3.3} fill="#26262E" />
-      </svg>
+    <div className={`dice-scene${spinning ? ' rolling' : ''}`}>
+      <div className="dice-bounce">
+        <div
+          className="dice-cube"
+          style={{ transform: `rotateX(${rot.x}deg) rotateY(${rot.y}deg)` }}
+          role="img"
+          aria-label={`骰子 ${face} 点`}
+        >
+          {[1, 2, 3, 4, 5, 6].map(v => (
+            <Face key={v} value={v} />
+          ))}
+        </div>
+      </div>
+      <div className="dice-shadow" />
     </div>
   );
 }

@@ -20,7 +20,7 @@ export function ModalSheet({ isOpen, onClose, children, wide }: ModalSheetProps)
       <div
         className={`absolute bottom-0 left-0 right-0 md:relative md:bottom-auto md:left-auto md:right-auto
           bg-[#1C1C1E] rounded-t-[32px] md:rounded-[28px] md:border md:border-white/10 md:shadow-2xl
-          p-6 max-h-[88vh] flex flex-col ${wide ? 'md:w-full md:max-w-lg' : 'md:w-full md:max-w-md'}`}
+          p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-6 max-h-[88vh] flex flex-col ${wide ? 'md:w-full md:max-w-lg' : 'md:w-full md:max-w-md'}`}
       >
         {/* 移动端抽屉把手，桌面端隐藏 */}
         <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-5 md:hidden" />

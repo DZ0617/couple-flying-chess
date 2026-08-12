@@ -58,12 +58,32 @@ body {
 }
 .animate-ping-once { animation: ping-once 0.4s ease-out; display: inline-block; }
 
+/* 默契考验答案圆点遮罩：用 text 输入避免 iOS 钥匙串自动填充，用遮罩保持隐私效果 */
+.text-mask { -webkit-text-security: disc; }
+
 /* 任务卡 3D 翻卡 */
 .flip-card { perspective: 1000px; }
-.flip-inner { transition: transform 0.55s; transform-style: preserve-3d; }
+.flip-inner {
+  transition: transform 0.55s ease-in-out;
+  transform-style: preserve-3d;
+  will-change: transform; /* 提升为合成层：移动端的背面剔除只在合成层上稳定生效 */
+}
 .flip-inner.flipped { transform: rotateY(180deg); }
-.flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.flip-back { transform: rotateY(180deg); }
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* 两面共面会产生深度冲突：正面抬升 1px，
+     翻转后背面恒定朝前且在上，即使 backface-visibility 失效也不会透出镜像 */
+  transform: translateZ(1px);
+  /* 兜底：完全不依赖 backface-visibility，在翻转中点直接交换两面的可见性 */
+  transition: visibility 0s linear 0.28s;
+}
+.flip-back {
+  transform: rotateY(180deg) translateZ(1px);
+  visibility: hidden;
+}
+.flip-inner.flipped .flip-back { visibility: visible; }
+.flip-inner.flipped .flip-face:not(.flip-back) { visibility: hidden; }
 
 /* 胜利撒花 */
 @keyframes confetti-fall {
@@ -79,7 +99,7 @@ body {
 
 /* 尊重系统动效偏好：前庭敏感用户关闭翻卡/弹跳 */
 @media (prefers-reduced-motion: reduce) {
-  .flip-inner, .animate-ping-once, .confetti-piece { transition: none; animation: none; }
+  .flip-inner, .flip-face, .animate-ping-once, .confetti-piece { transition: none; animation: none; }
 }
 
 /* 前庭敏感用户：关闭 SVG 内的 SMIL 循环动画（护盾光环、稀有卡流光等） */
@@ -90,22 +110,77 @@ body {
   }
 }
 
-/* ===== 第二阶段：3D 骰子 & 稀有卡 ===== */
-@keyframes dice-tumble {
-  0% { transform: rotate(0deg) translateY(0); }
-  25% { transform: rotate(-10deg) translateY(-6px); }
-  50% { transform: rotate(8deg) translateY(2px); }
-  75% { transform: rotate(-6deg) translateY(-4px); }
-  100% { transform: rotate(0deg) translateY(0); }
+/* ===== 3D 骰子（CSS 立方体）===== */
+.dice-scene {
+  width: 64px;
+  height: 64px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 340px;
 }
-.animate-dice-tumble {
-  animation: dice-tumble 0.45s ease-in-out infinite;
+.dice-bounce { transform-style: preserve-3d; }
+.dice-scene.rolling .dice-bounce { animation: dice-bounce 0.36s ease-in-out infinite; }
+@keyframes dice-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.dice-cube {
+  width: 54px;
+  height: 54px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.15); /* 停骰带回弹 */
+}
+.dice-scene.rolling .dice-cube { transition: transform 0.12s ease-in; } /* 翻滚时快速 */
+.dice-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #FFFFFF 0%, #EEEEF3 55%, #DBDBE4 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -3px 8px rgba(15, 15, 25, 0.14);
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  padding: 9px;
+  backface-visibility: hidden;
+}
+.dice-cell { display: flex; align-items: center; justify-content: center; }
+.dice-dot {
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3C3C47, #15151B 72%);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.dice-dot.accent { background: radial-gradient(circle at 35% 30%, #FF5C7A, #D81E4E 72%); }
+.dice-dot.big { width: 118%; height: 118%; }
+.dice-shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 42px;
+  height: 8px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  filter: blur(5px);
+}
+.dice-scene.rolling .dice-shadow { animation: dice-shadow 0.36s ease-in-out infinite; }
+@keyframes dice-shadow {
+  0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 1; }
+  50% { transform: translateX(-50%) scaleX(0.72); opacity: 0.55; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-dice-tumble {
-    animation: none;
-  }
+  .dice-cube, .dice-scene.rolling .dice-cube { transition: none; }
+  .dice-scene.rolling .dice-bounce,
+  .dice-scene.rolling .dice-shadow { animation: none; }
   .svg-anim {
     display: none;
   }

@@ -17,40 +17,40 @@ function BoardDefs() {
   return (
     <defs>
       <linearGradient id="tile-blank" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#24242B" /><stop offset="100%" stopColor="#1A1A21" />
+        <stop offset="0%" stopColor="#232329" /><stop offset="100%" stopColor="#1B1B21" />
       </linearGradient>
       <linearGradient id="tile-lucky" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FF4D6E" /><stop offset="100%" stopColor="#C81E50" />
+        <stop offset="0%" stopColor="#3E1B2A" /><stop offset="100%" stopColor="#2C131F" />
       </linearGradient>
       <linearGradient id="tile-trap" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#C86BFA" /><stop offset="100%" stopColor="#8A2FD0" />
+        <stop offset="0%" stopColor="#351B40" /><stop offset="100%" stopColor="#25132E" />
       </linearGradient>
       <linearGradient id="tile-forward" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#2E97FF" /><stop offset="100%" stopColor="#0A64C8" />
+        <stop offset="0%" stopColor="#14304C" /><stop offset="100%" stopColor="#0E2236" />
       </linearGradient>
       <linearGradient id="tile-backward" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#4A4A54" /><stop offset="100%" stopColor="#2E2E38" />
+        <stop offset="0%" stopColor="#25252D" /><stop offset="100%" stopColor="#1C1C23" />
       </linearGradient>
       <linearGradient id="tile-extra" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#3ED968" /><stop offset="100%" stopColor="#1E9E46" />
+        <stop offset="0%" stopColor="#143528" /><stop offset="100%" stopColor="#0E261D" />
       </linearGradient>
       <linearGradient id="tile-duo" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FFC53D" /><stop offset="100%" stopColor="#F08C00" />
+        <stop offset="0%" stopColor="#402F14" /><stop offset="100%" stopColor="#2E2110" />
       </linearGradient>
       <linearGradient id="tile-swap" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#B478FF" /><stop offset="100%" stopColor="#6E3FD8" />
+        <stop offset="0%" stopColor="#301B44" /><stop offset="100%" stopColor="#221332" />
       </linearGradient>
       <linearGradient id="tile-jump" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#6FD6FF" /><stop offset="100%" stopColor="#2FA3D8" />
+        <stop offset="0%" stopColor="#133642" /><stop offset="100%" stopColor="#0D2831" />
       </linearGradient>
       <linearGradient id="tile-vortex" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#7A78F0" /><stop offset="100%" stopColor="#4A48C8" />
+        <stop offset="0%" stopColor="#22224C" /><stop offset="100%" stopColor="#171738" />
       </linearGradient>
       <linearGradient id="tile-shield" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#3ED968" /><stop offset="100%" stopColor="#1E8E60" />
+        <stop offset="0%" stopColor="#14362C" /><stop offset="100%" stopColor="#0E2721" />
       </linearGradient>
       <linearGradient id="tile-sync" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FFD60A" /><stop offset="100%" stopColor="#FF9F0A" />
+        <stop offset="0%" stopColor="#3E3514" /><stop offset="100%" stopColor="#2C2510" />
       </linearGradient>
       <linearGradient id="tile-gold" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stopColor="#FFE066" /><stop offset="100%" stopColor="#FF9F0A" />
@@ -154,7 +154,7 @@ export function GameBoard({ boardMap, pathCoords, players, currentTurn }: GameBo
           points={guidePoints}
           fill="none"
           stroke="#FFFFFF"
-          strokeOpacity={0.12}
+          strokeOpacity={0.08}
           strokeWidth={7}
           strokeDasharray="0.1 16"
           strokeLinecap="round"

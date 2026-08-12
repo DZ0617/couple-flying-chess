@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Player, PathCoord, TileType, TaskEventData, LandingOutcome, LandingMeta,
   Movement, GameMode, GrantFeed,
@@ -12,7 +13,7 @@ import {
 import { MODE_CONFIGS } from '../../data/gameModes';
 import { BAND_NAMES, effectiveBand } from '../../utils/heat';
 import { playSound, isMuted, setMuted as setMutedPref } from '../../utils/sound';
-import { ArrowLeft, HelpCircle, ShoppingBag, Heart, Volume2, VolumeX, Flame } from 'lucide-react';
+import { ArrowLeft, HelpCircle, ShoppingBag, Volume2, VolumeX, Flame } from 'lucide-react';
 
 const STEP_DELAY_MS = 220;
 const CHAIN_DELAY_MS = 300;
@@ -305,18 +306,17 @@ export function GameView({
 
   return (
     <div className={`fixed inset-0 z-50 ${modeBg[mode]} text-white flex flex-col overflow-y-auto`}>
-      <header className="flex items-center justify-between px-4 py-3 shrink-0 md:max-w-5xl md:mx-auto md:w-full">
+      <header className="flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-3 shrink-0 md:max-w-5xl md:mx-auto md:w-full">
         <button onClick={onBack} disabled={modalOpen} className="p-2 -ml-2 text-white/70 hover:text-white disabled:opacity-40" aria-label="返回">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <button
           onClick={onOpenShop}
           disabled={phase !== 'awaitRoll' || modalOpen}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 disabled:opacity-40 active:scale-95 transition"
+          className="p-2 text-white/70 hover:text-white disabled:opacity-40"
+          aria-label="商店"
         >
-          <ShoppingBag className="w-4 h-4 text-[#FF9F0A]" />
-          <Heart className="w-3.5 h-3.5 text-[#FF375F]" />
-          <span className="text-sm font-semibold">{activePlayer.hearts}</span>
+          <ShoppingBag className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-1">
           <button
@@ -377,7 +377,7 @@ export function GameView({
         </div>
 
         <div className="flex flex-col items-center gap-4 md:bg-white/5 md:border md:border-white/10 md:rounded-3xl md:p-8 md:w-80">
-          <div className="flex items-center gap-4 min-h-[64px]">
+          <div className="flex items-center justify-center gap-5 min-h-[84px] px-6 py-3 rounded-2xl bg-white/[0.04] border border-white/5 shadow-inner">
             {Array.from({ length: config.diceCount }).map((_, i) => (
               <Dice
                 key={i}
@@ -408,7 +408,9 @@ export function GameView({
         </div>
       </main>
 
-      <ToastStack toasts={toasts} />
+      {/* Toast 用 portal 挂到 body：GameView 根节点是 z-50 的层叠上下文，
+          内部 z-[120] 换算到根层级连 z-50 都超不过，会被 z-115 的弹层完全盖住 */}
+      {createPortal(<ToastStack toasts={toasts} />, document.body)}
     </div>
   );
 }

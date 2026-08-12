@@ -158,7 +158,7 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex justify-center bg-black">
+    <div className="h-screen supports-[height:100dvh]:h-dvh w-screen overflow-hidden flex justify-center bg-black">
       <div className="fixed inset-0 z-0">
         <div className="w-full h-full bg-gradient-to-br from-gray-900 via-black to-gray-900 opacity-60" />
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
@@ -169,24 +169,17 @@ function App() {
       </div>
 
       <div className="relative z-10 w-full max-w-[430px] md:max-w-[520px] h-full md:h-[calc(100%-3rem)] md:my-6 flex flex-col bg-black/20 md:bg-[#0F0F10]/80 md:rounded-[32px] md:border md:border-white/10 md:shadow-2xl md:overflow-hidden">
-        <header className="pt-12 pb-2 px-6 shrink-0 flex justify-between items-start">
-          <div>
-            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
-              Couple's Game
-            </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">情侣飞行棋</h1>
-          </div>
-          <div className="flex flex-col items-end gap-2 mt-1">
-            <a
-              href="https://github.com/woniu9524/couple-flying-chess"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-colors"
-              title="GitHub Repository"
-            >
-              <Github size={24} />
-            </a>
-          </div>
+        <header className="pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-2 px-6 shrink-0 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white tracking-tight">情侣飞行棋</h1>
+          <a
+            href="https://github.com/woniu9524/couple-flying-chess"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-500 hover:text-white transition-colors"
+            title="GitHub Repository"
+          >
+            <Github size={20} />
+          </a>
         </header>
 
         <main className="flex-1 min-h-0 relative overflow-hidden">
